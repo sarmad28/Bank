@@ -3,30 +3,27 @@ package co.ubl.bank.Security.util;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
 
 @Service
 public class JwtTokenUtil {
-    private final String SECRET_KEY = "THISISSARMADALISHAIKHWORKINGINUBLBANK"; // Use a secure secret key
-    private final long EXPIRATION_TIME = 86400000; // 1 day in milliseconds
+
+    // 256-bit strong key (auto-generated)
+    private static final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+
+    // 1 hour expiration
+    private static final long EXPIRATION_TIME = 1000 * 60 * 60;
 
     public String generateToken(String username) {
-        Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username);
-    }
-
-    private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
+                .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
+                .signWith(SECRET_KEY)   // new API: secure key
                 .compact();
     }
 
@@ -40,7 +37,12 @@ public class JwtTokenUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
+        // new parser API (jjwt 0.11.x)
+        return Jwts.parserBuilder()
+                .setSigningKey(SECRET_KEY)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     public boolean isTokenExpired(String token) {
